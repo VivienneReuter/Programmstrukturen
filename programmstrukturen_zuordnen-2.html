@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informatik 8: MakeCode Programmstrukturen Zuordnen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        /* --- Authentic MakeCode Block Styling --- */
+        .mc-block {
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 700;
+            color: white;
+            font-size: 14px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            cursor: grab;
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            max-width: 320px;
+        }
+        .mc-block:active {
+            cursor: grabbing;
+        }
+        .mc-block.dragging {
+            opacity: 0.3;
+        }
+
+        /* MakeCode Category Colors */
+        .mc-blue { background-color: #007acc; }
+        .mc-magenta { background-color: #e6308a; }
+        .mc-green { background-color: #00aa00; }
+        .mc-cyan { background-color: #009999; }
+        .mc-red { background-color: #d40000; }
+
+        /* Top Event Hat (beim Start, wenn Knopf geklickt) */
+        .mc-hat {
+            border-top-left-radius: 18px;
+            border-top-right-radius: 18px;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            padding: 8px 12px;
+        }
+
+        /* Standard Command Block */
+        .mc-cmd {
+            border-radius: 4px;
+            padding: 8px 12px;
+        }
+
+        /* C-Shaped Container Blocks (dauerhaft, wiederholen, wenn dann) */
+        .mc-c-block {
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        .mc-c-top {
+            padding: 8px 12px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+        }
+        .mc-c-body {
+            min-height: 28px;
+            background-color: rgba(0, 0, 0, 0.15);
+            margin-left: 18px;
+            border-left: 4px solid rgba(0, 0, 0, 0.1);
+        }
+        .mc-c-bottom {
+            height: 12px;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        /* Empty Condition Diamond / Slot Placeholder */
+        .mc-condition-slot {
+            display: inline-block;
+            width: 50px;
+            height: 22px;
+            background-color: rgba(0, 0, 0, 0.25);
+            border-radius: 12px;
+            vertical-align: middle;
+            border: 1px dashed rgba(255, 255, 255, 0.6);
+        }
+
+        /* Inputs & Field Dropdowns inside blocks */
+        .mc-input {
+            background-color: white;
+            color: #333;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 13px;
+            display: inline-flex;
+            items-center;
+            font-weight: 700;
+        }
+        .mc-dropdown {
+            background-color: rgba(0, 0, 0, 0.25);
+            color: white;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Dropzone Styling */
+        .dropzone {
+            min-height: 95px;
+            transition: all 0.2s ease;
+        }
+        .dropzone.drag-over {
+            background-color: #e0f2fe !important;
+            border-color: #0284c7 !important;
+        }
+        .dropzone.correct {
+            background-color: #f0fdf4 !important;
+            border-color: #22c55e !important;
+        }
+        .dropzone.incorrect {
+            background-color: #fef2f2 !important;
+            border-color: #ef4444 !important;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <!-- Header -->
+    <header class="max-w-5xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Informatik 8: Programmstrukturen</h1>
+            <p class="text-gray-600 text-sm mt-0.5">Ordne die MakeCode-Programmbausteine ihrer jeweiligen Funktion zu.</p>
+        </div>
+        <button id="reset-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 rounded-lg text-sm font-semibold border border-gray-300 transition">
+            ↻ Zurücksetzen
+        </button>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
+
+        <!-- Left: Bausteine (Source) -->
+        <section class="md:col-span-5 bg-gray-200/60 p-4 rounded-xl border border-gray-300">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-gray-600 mb-4 flex items-center gap-2">
+                <span>🧱</span> MakeCode-Bausteine
+            </h2>
+            <div id="blocks-pool" class="space-y-4 min-h-[400px] flex flex-col items-center sm:items-start">
+                <!-- Dynamic Blocks -->
+            </div>
+        </section>
+
+        <!-- Right: Ziel-Zuordnungen -->
+        <section class="md:col-span-7 space-y-3">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-gray-600 mb-4 flex items-center gap-2">
+                <span>🎯</span> Welche Funktion hat der Baustein?
+            </h2>
+            <div id="targets-list" class="space-y-3">
+                <!-- Dynamic Drop Targets -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Controls & Result -->
+    <footer class="max-w-5xl mx-auto mt-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div id="status-msg" class="text-sm font-medium text-gray-600">
+            Ziehe die Bausteine von links in die passenden Felder rechts.
+        </div>
+        <button id="check-btn" class="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-lg shadow-sm transition">
+            Ergebnis überprüfen
+        </button>
+    </footer>
+
+    <script>
+        // Data Definitions matching image & simplified neutral variable naming
+        const blocksData = [
+            {
+                id: 'beim-start',
+                targetCategory: 'start',
+                html: `
+                    <div class="mc-block mc-blue mc-c-block">
+                        <div class="mc-c-top">beim Start</div>
+                        <div class="mc-c-body"></div>
+                        <div class="mc-c-bottom mc-blue"></div>
+                    </div>
+                `,
+                desc: 'Führt den enthaltenen Code genau einmal beim Einschalten oder Programmstart aus.'
+            },
+            {
+                id: 'setze-variable',
+                targetCategory: 'set-variable',
+                html: `
+                    <div class="mc-block mc-red mc-cmd flex items-center gap-1.5 flex-wrap">
+                        setze <span class="mc-dropdown">Variable ▾</span> auf <span class="mc-input">0</span>
+                    </div>
+                `,
+                desc: 'Speichert einen bestimmten Startwert in einer Variable.'
+            },
+            {
+                id: 'dauerhaft',
+                targetCategory: 'dauerhaft',
+                html: `
+                    <div class="mc-block mc-blue mc-c-block">
+                        <div class="mc-c-top">dauerhaft</div>
+                        <div class="mc-c-body"></div>
+                        <div class="mc-c-bottom mc-blue"></div>
+                    </div>
+                `,
+                desc: 'Wiederholt die enthaltenen Befehle endlos in einer Dauerschleife.'
+            },
+            {
+                id: 'ereignis-knopf',
+                targetCategory: 'event',
+                html: `
+                    <div class="mc-block mc-magenta mc-hat flex items-center gap-1.5 flex-wrap">
+                        wenn Knopf <span class="mc-dropdown">A ▾</span> geklickt
+                    </div>
+                `,
+                desc: 'Startet Codeabschnitte erst, wenn ein bestimmtes Ereignis (wie ein Tastendruck) eintritt.'
+            },
+            {
+                id: 'zaehlschleife',
+                targetCategory: 'loop',
+                html: `
+                    <div class="mc-block mc-green mc-c-block">
+                        <div class="mc-c-top flex items-center gap-1.5 flex-wrap">
+                            <span class="mc-input">3</span> -mal wiederholen mache
+                        </div>
+                        <div class="mc-c-body"></div>
+                        <div class="mc-c-bottom mc-green"></div>
+                    </div>
+                `,
+                desc: 'Wiederholt die eingeschlossenen Befehle eine feste Anzahl von Malen.'
+            },
+            {
+                id: 'bedingung-wenn',
+                targetCategory: 'logic',
+                html: `
+                    <div class="mc-block mc-cyan mc-c-block">
+                        <div class="mc-c-top flex items-center gap-1.5 flex-wrap">
+                            wenn <span class="mc-condition-slot"></span> dann
+                        </div>
+                        <div class="mc-c-body"></div>
+                        <div class="mc-c-bottom mc-cyan"></div>
+                    </div>
+                `,
+                desc: 'Prüft eine Bedingung und führt den innenliegenden Code nur aus, wenn die Bedingung wahr ist.'
+            },
+            {
+                id: 'variable-aendern',
+                targetCategory: 'change-variable',
+                html: `
+                    <div class="mc-block mc-red mc-cmd flex items-center gap-1.5 flex-wrap">
+                        ändere <span class="mc-dropdown">Variable ▾</span> um <span class="mc-input">1</span>
+                    </div>
+                `,
+                desc: 'Erhöht oder verringert den aktuell gespeicherten Wert einer Variable.'
+            }
+        ];
+
+        let state = {
+            assignments: {}, // targetCategory -> blockId
+            draggedBlockId: null
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            document.getElementById('check-btn').addEventListener('click', checkAnswers);
+            document.getElementById('reset-btn').addEventListener('click', initApp);
+        });
+
+        function initApp() {
+            state.assignments = {};
+            state.draggedBlockId = null;
+
+            const pool = document.getElementById('blocks-pool');
+            const targetsList = document.getElementById('targets-list');
+            const statusMsg = document.getElementById('status-msg');
+
+            pool.innerHTML = '';
+            targetsList.innerHTML = '';
+            statusMsg.className = 'text-sm font-medium text-gray-600';
+            statusMsg.textContent = 'Ziehe die Bausteine von links in die passenden Felder rechts.';
+
+            // Shuffle Blocks and Targets independently
+            const shuffledBlocks = [...blocksData].sort(() => Math.random() - 0.5);
+            const shuffledTargets = [...blocksData].sort(() => Math.random() - 0.5);
+
+            // Render draggable blocks
+            shuffledBlocks.forEach(item => {
+                const wrapper = document.createElement('div');
+                wrapper.id = `block-wrapper-${item.id}`;
+                wrapper.dataset.blockId = item.id;
+                wrapper.draggable = true;
+                wrapper.className = 'cursor-grab active:cursor-grabbing transition-transform hover:scale-[1.02] w-full flex justify-center sm:justify-start';
+                wrapper.innerHTML = item.html;
+
+                wrapper.addEventListener('dragstart', handleDragStart);
+                wrapper.addEventListener('dragend', handleDragEnd);
+                addTouchHandlers(wrapper);
+
+                pool.appendChild(wrapper);
+            });
+
+            // Render drop targets with direct function descriptions
+            shuffledTargets.forEach(item => {
+                const targetBox = document.createElement('div');
+                targetBox.className = 'dropzone bg-white p-3.5 rounded-xl border-2 border-dashed border-gray-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3';
+                targetBox.dataset.category = item.targetCategory;
+
+                targetBox.innerHTML = `
+                    <div class="flex-1">
+                        <div class="text-sm md:text-base font-semibold text-gray-800">${item.desc}</div>
+                    </div>
+                    <div class="slot-container min-w-[220px] w-full sm:w-auto h-[60px] bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs font-semibold">
+                        Hier ablegen
+                    </div>
+                `;
+
+                targetBox.addEventListener('dragover', handleDragOver);
+                targetBox.addEventListener('dragleave', handleDragLeave);
+                targetBox.addEventListener('drop', handleDrop);
+
+                targetsList.appendChild(targetBox);
+            });
+        }
+
+        /* --- Drag and Drop Handlers --- */
+
+        function handleDragStart(e) {
+            state.draggedBlockId = this.dataset.blockId;
+            this.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', this.dataset.blockId);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd() {
+            this.classList.remove('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave() {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const blockId = e.dataTransfer ? e.dataTransfer.getData('text/plain') : state.draggedBlockId;
+            if (blockId) {
+                placeBlockInTarget(blockId, this);
+            }
+        }
+
+        function placeBlockInTarget(blockId, targetZone) {
+            const blockEl = document.getElementById(`block-wrapper-${blockId}`);
+            const category = targetZone.dataset.category;
+            const slot = targetZone.querySelector('.slot-container');
+
+            // Remove visual feedback from previous checks
+            targetZone.classList.remove('correct', 'incorrect');
+
+            // If target already has a block, move the existing block back to the pool
+            const existingBlockId = Object.keys(state.assignments).find(key => state.assignments[key] === category);
+            if (existingBlockId) {
+                document.getElementById('blocks-pool').appendChild(document.getElementById(`block-wrapper-${existingBlockId}`));
+                delete state.assignments[existingBlockId];
+            }
+
+            // Put block into target slot
+            slot.innerHTML = '';
+            slot.appendChild(blockEl);
+            slot.classList.remove('bg-gray-50', 'border', 'border-gray-200');
+
+            state.assignments[blockId] = category;
+        }
+
+        /* --- Mobile Touch Support --- */
+
+        let touchClone = null;
+
+        function addTouchHandlers(el) {
+            el.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                state.draggedBlockId = el.dataset.blockId;
+
+                touchClone = el.cloneNode(true);
+                touchClone.style.position = 'fixed';
+                touchClone.style.pointerEvents = 'none';
+                touchClone.style.zIndex = '1000';
+                touchClone.style.opacity = '0.85';
+                touchClone.style.width = `${el.offsetWidth}px`;
+                document.body.appendChild(touchClone);
+
+                updateTouchClonePosition(touch);
+                el.classList.add('opacity-30');
+            }, { passive: true });
+
+            el.addEventListener('touchmove', (e) => {
+                if (!touchClone) return;
+                const touch = e.touches[0];
+                updateTouchClonePosition(touch);
+
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const dropzone = elementBelow ? elementBelow.closest('.dropzone') : null;
+
+                document.querySelectorAll('.dropzone').forEach(dz => dz.classList.remove('drag-over'));
+                if (dropzone) dropzone.classList.add('drag-over');
+            }, { passive: true });
+
+            el.addEventListener('touchend', (e) => {
+                if (!touchClone) return;
+                const touch = e.changedTouches[0];
+
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const dropzone = elementBelow ? elementBelow.closest('.dropzone') : null;
+
+                if (dropzone) {
+                    placeBlockInTarget(state.draggedBlockId, dropzone);
+                    dropzone.classList.remove('drag-over');
+                }
+
+                if (touchClone && touchClone.parentNode) {
+                    touchClone.parentNode.removeChild(touchClone);
+                }
+                touchClone = null;
+                el.classList.remove('opacity-30');
+            });
+        }
+
+        function updateTouchClonePosition(touch) {
+            if (touchClone) {
+                touchClone.style.left = `${touch.clientX - touchClone.offsetWidth / 2}px`;
+                touchClone.style.top = `${touch.clientY - touchClone.offsetHeight / 2}px`;
+            }
+        }
+
+        /* --- Evaluation --- */
+
+        function checkAnswers() {
+            const total = blocksData.length;
+            const assignedCount = Object.keys(state.assignments).length;
+            const statusMsg = document.getElementById('status-msg');
+
+            if (assignedCount < total) {
+                statusMsg.className = 'text-sm font-bold text-amber-600';
+                statusMsg.textContent = `⚠️ Bitte ordne alle ${total} Bausteine zu! (${assignedCount}/${total} zugeordnet)`;
+                return;
+            }
+
+            let correctCount = 0;
+
+            document.querySelectorAll('.dropzone').forEach(zone => {
+                const category = zone.dataset.category;
+                const assignedBlockId = Object.keys(state.assignments).find(key => state.assignments[key] === category);
+                const blockObj = blocksData.find(b => b.id === assignedBlockId);
+
+                zone.classList.remove('correct', 'incorrect');
+
+                if (blockObj && blockObj.targetCategory === category) {
+                    correctCount++;
+                    zone.classList.add('correct');
+                } else {
+                    zone.classList.add('incorrect');
+                }
+            });
+
+            if (correctCount === total) {
+                statusMsg.className = 'text-base font-bold text-emerald-600';
+                statusMsg.textContent = `🎉 Hervorragend! Alle ${total} Strukturen wurden richtig zugeordnet!`;
+            } else {
+                statusMsg.className = 'text-sm font-bold text-red-600';
+                statusMsg.textContent = `❌ ${correctCount} von ${total} richtig. Korrigiere die rot markierten Felder.`;
+            }
+        }
+    </script>
+</body>
+</html>
